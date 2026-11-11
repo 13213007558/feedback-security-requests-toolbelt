@@ -116,6 +116,15 @@ the server. This requires an additional request in case of basic auth, as
 usually basic auth is sent preemptively. If the server didn't explicitly
 require authentication, no credentials are sent.
 
+When a request is retried after an authentication challenge (either from the
+proxy or from the origin server), the request body has to be sent again.
+Bodies that can be seeked back to their starting position (e.g. files) are
+rewound automatically. Bodies that can only be consumed once, such as a
+:class:`~requests_toolbelt.multipart.encoder.MultipartEncoder` or a
+generator, cannot be replayed: an
+:exc:`requests.exceptions.UnrewindableBodyError` is raised before anything is
+resent, so the server never receives a truncated or empty body.
+
 .. autoclass:: requests_toolbelt.auth.guess.GuessProxyAuth
 
 HTTPProxyDigestAuth

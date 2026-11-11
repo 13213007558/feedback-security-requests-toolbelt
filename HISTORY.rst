@@ -9,6 +9,15 @@ Fixed Bugs
 
 - Save and recover ``base_url`` in ``BaseUrlSession`` during pickle and unpickle
 
+- ``GuessAuth`` and ``GuessProxyAuth`` now rewind the request body before
+  every authentication retry, so chained challenges (e.g. a proxy 407
+  followed by an origin 401) no longer resend an empty or truncated body.
+  Bodies that cannot be replayed, such as ``MultipartEncoder``, now raise
+  ``requests.exceptions.UnrewindableBodyError`` instead of being resent
+  incomplete. Repeated challenges, digest ``stale`` rejections, and
+  Basic/Digest scheme switching are all bounded by a per-request retry
+  limit, and superseded responses are released.
+
 1.0.0 -- 2023-05-01
 -------------------
 
