@@ -4,6 +4,13 @@ History
 1.1.0 -- 2024-xx-yy
 -------------------
 
+New Features
+~~~~~~~~~~~~
+
+- Add ``StreamingMultipartDecoder`` to incrementally decode multipart
+  response bodies one part at a time, without buffering the whole body
+  in memory
+
 Fixed Bugs
 ~~~~~~~~~~
 

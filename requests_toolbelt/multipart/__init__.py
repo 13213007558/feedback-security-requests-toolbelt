@@ -9,9 +9,10 @@ See https://toolbelt.readthedocs.io/ for documentation
 """
 
 from .encoder import MultipartEncoder, MultipartEncoderMonitor
-from .decoder import MultipartDecoder
+from .decoder import MultipartDecoder, StreamingMultipartDecoder
 from .decoder import ImproperBodyPartContentException
 from .decoder import NonMultipartContentTypeException
+from .decoder import MultipartStreamException, TruncatedMultipartException
 
 __title__ = 'requests-toolbelt'
 __authors__ = 'Ian Cordasco, Cory Benfield'
@@ -22,8 +23,11 @@ __all__ = [
     'MultipartEncoder',
     'MultipartEncoderMonitor',
     'MultipartDecoder',
+    'StreamingMultipartDecoder',
     'ImproperBodyPartContentException',
     'NonMultipartContentTypeException',
+    'MultipartStreamException',
+    'TruncatedMultipartException',
     '__title__',
     '__authors__',
     '__license__',
