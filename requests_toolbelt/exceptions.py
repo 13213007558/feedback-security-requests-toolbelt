@@ -7,6 +7,18 @@ class StreamingError(Exception):
     pass
 
 
+class MultipartEncodingError(Exception):
+    """Raised when a multipart body cannot satisfy its declared length.
+
+    The length advertised by :class:`MultipartEncoder` is part of the request
+    contract (e.g. the ``Content-Length`` header), so an input that ends early,
+    stalls on a short read, grows beyond its reported size, or provides no
+    length information at all must fail explicitly instead of looping forever
+    or emitting a truncated body that still looks like a complete request.
+    """
+    pass
+
+
 class VersionMismatchError(Exception):
     """Used to indicate a version mismatch in the version of requests required.
 

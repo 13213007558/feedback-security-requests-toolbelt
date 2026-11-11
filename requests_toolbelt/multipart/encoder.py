@@ -15,6 +15,7 @@ from uuid import uuid4
 import requests
 
 from .._compat import fields
+from ..exceptions import MultipartEncodingError
 
 
 class FileNotSupportedError(Exception):
@@ -485,7 +486,18 @@ class Part(object):
         self.headers = headers
         self.body = body
         self.headers_unread = True
-        self.len = len(self.headers) + total_len(self.body)
+        body_len = total_len(self.body)
+        if body_len is None:
+            raise MultipartEncodingError(
+                "Cannot determine the length of a multipart part's body. "
+                "Provide a size via a __len__ method, a len attribute, a "
+                "real file descriptor (fileno), or getvalue(); otherwise no "
+                "Content-Length can be promised for this request."
+            )
+        self.len = len(self.headers) + body_len
+        self._expected_body_len = body_len
+        self._body_bytes_written = 0
+        self._consumed_verified = False
 
     @classmethod
     def from_field(cls, field, encoding):
@@ -525,9 +537,52 @@ class Part(object):
             amount_to_read = size
             if size != -1:
                 amount_to_read = size - written
-            written += buffer.append(self.body.read(amount_to_read))
+            chunk = self.body.read(amount_to_read)
+            if not chunk:
+                raise MultipartEncodingError(
+                    "Part body ended (or stalled on a short read) while "
+                    "{remaining} of {expected} bytes were still promised. "
+                    "The declared Content-Length cannot be honoured.".format(
+                        remaining=total_len(self.body),
+                        expected=self._expected_body_len,
+                    )
+                )
+            written += buffer.append(chunk)
+            self._body_bytes_written += len(chunk)
+            if self._body_bytes_written > self._expected_body_len:
+                raise MultipartEncodingError(
+                    "Part body produced {actual} bytes but only {expected} "
+                    "were declared. The input grew beyond the length used to "
+                    "compute Content-Length.".format(
+                        actual=self._body_bytes_written,
+                        expected=self._expected_body_len,
+                    )
+                )
+
+        if (not self._consumed_verified
+                and total_len(self.body) == 0
+                and not self.headers_unread):
+            self._verify_body_consumed()
+            self._consumed_verified = True
 
         return written
+
+    def _verify_body_consumed(self):
+        """Confirm a body that reports zero bytes left is truly exhausted.
+
+        This catches an input whose reported length shrank to zero while it
+        still holds unreported data (i.e. the declared length understated the
+        real payload), which would otherwise silently truncate the part.
+        """
+        tail = self.body.read(1)
+        if tail:
+            raise MultipartEncodingError(
+                "Part body still contains data after its declared length of "
+                "{expected} bytes was written. The input grew beyond the "
+                "length used to compute Content-Length.".format(
+                    expected=self._expected_body_len,
+                )
+            )
 
 
 class CustomBytesIO(io.BytesIO):

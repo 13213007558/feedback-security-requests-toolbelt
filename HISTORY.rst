@@ -8,6 +8,12 @@ Fixed Bugs
 ~~~~~~~~~~
 
 - Save and recover ``base_url`` in ``BaseUrlSession`` during pickle and unpickle
+- Make ``MultipartEncoder`` fail with ``MultipartEncodingError`` when a part
+  cannot honour its declared length: an unmeasureable body, an early EOF or
+  stalling short read, or an input that grows beyond the length reported at
+  construction. Previously such inputs raised an obscure ``TypeError``, looped
+  forever, or streamed a truncated body under a correct-looking
+  ``Content-Length``
 
 1.0.0 -- 2023-05-01
 -------------------
