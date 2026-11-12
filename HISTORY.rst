@@ -4,10 +4,28 @@ History
 1.1.0 -- 2024-xx-yy
 -------------------
 
+Breaking Changes
+~~~~~~~~~~~~~~~~
+
+- ``X509Adapter`` no longer uses the pyOpenSSL integration, which was
+  removed in urllib3 2.x. It now builds standard library
+  ``ssl.SSLContext`` objects and works with urllib3 1.26.x and 2.x on
+  Requests 2.12+. pyOpenSSL is no longer required or used.
+
 Fixed Bugs
 ~~~~~~~~~~
 
 - Save and recover ``base_url`` in ``BaseUrlSession`` during pickle and unpickle
+- ``X509Adapter`` now honors the session ``verify`` setting and per-request
+  ``verify`` overrides for server certificate validation. A distinct SSL
+  context is created per connection pool so trust bundles and verification
+  mode cannot leak between requests, including across HTTP/HTTPS proxy
+  tunnels where proxy and target trust are configured separately.
+- Wrong private key passphrases and certificate/private key mismatches now
+  fail while the adapter is being constructed instead of on the first
+  request. PEM/DER certificates and encrypted private keys remain
+  supported through the original ``cert_bytes``/``pk_bytes``/``password``
+  interface.
 
 1.0.0 -- 2023-05-01
 -------------------

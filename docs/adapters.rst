@@ -209,7 +209,63 @@ Example usage:
       from requests_toolbelt.adapters.x509 import X509Adapter
       s = requests.Session()
       a = X509Adapter(max_retries=3,
-                      cert_bytes=b'...', pk_bytes=b'...', encoding='...')
+                      cert_bytes=b'...', pk_bytes=b'...')
       s.mount('https://', a)
+
+The certificate (``cert_bytes``) and private key (``pk_bytes``) are passed as
+in-memory byte arrays. Both PEM (the default) and DER encodings are accepted
+via the ``encoding`` parameter, and encrypted private keys are supported by
+passing ``password`` as a string or UTF-8 bytes. A bad passphrase or a
+certificate/key pair that does not match raises while the adapter is being
+constructed, before any request is sent.
+
+.. note::
+
+    Python's OpenSSL bindings only load a client cert chain from a file, so
+    the in-memory material is briefly written to a ``0600`` temporary file
+    and removed immediately after the ``ssl.SSLContext`` has loaded it. When
+    the key is encrypted only the encrypted PEM is ever written; the
+    passphrase itself is never stored.
+
+Server certificate verification is left entirely to Requests and urllib3: the
+session-level ``verify`` value and any per-request ``verify`` override (a
+boolean or a path to a CA bundle) reach the underlying connection unchanged,
+and hostname verification stays enabled whenever the peer certificate is
+verified. A fresh ``ssl.SSLContext`` is created for every connection pool, so
+switching between trusted bundles or ``verify=False`` for individual requests
+cannot leak trust or verification state between requests.
+
+When a proxy is used, trust for the proxy connection and trust for the
+tunnelled target site are configured independently. For an HTTPS proxy,
+urllib3's ``proxy_ssl_context`` governs the TLS connection to the proxy while
+the adapter's context (and the request's ``verify``) governs the inner TLS
+connection to the target; an untrusted proxy certificate therefore fails
+before the tunnel is established, while an untrusted target certificate fails
+afterwards.
+
+.. note::
+
+    The adapter requires Requests 2.12.0 or newer together with a urllib3
+    release that uses the standard library ``ssl.SSLContext`` (urllib3
+    1.26.x or 2.x). The pyOpenSSL-based context used by older releases is no
+    longer supported because urllib3 2.x removed its pyOpenSSL integration.
+
+Supported version combinations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The adapter is driven by integration capabilities rather than a single
+pinned release; the following combinations are covered by the test suite:
+
+==========================  =====================  =========================
+Requests                    urllib3                TLS implementation
+==========================  =====================  =========================
+2.12.x – 2.31.x             1.26.x                 stdlib ``ssl.SSLContext``
+2.32.x and newer            2.x (e.g. 2.8)         stdlib ``ssl.SSLContext``
+==========================  =====================  =========================
+
+The currently exercised stack is Python 3.12 with Requests 2.34, urllib3 2.8
+and a recent ``cryptography`` release. Python 2.7 / Requests older than
+2.12 raise :class:`requests_toolbelt.exceptions.VersionMismatchError`, as do
+environments without ``ssl.SSLContext.load_cert_chain``.
 
 .. autoclass:: requests_toolbelt.adapters.x509.X509Adapter
